@@ -1,6 +1,7 @@
 """
 Analyse lexicale d'une expression
 """
+from tokens import *
 
 class Lexer:
     """
@@ -52,7 +53,7 @@ class Lexer:
     def extract_number(self):
         """
         Extrait tantque le prochain caractère est un chiffre
-        ou un . et l'idx du caractère encours est inférieur à la taille de epx
+        ou un . et l'idx du caractère encours est inférieur à la taille de exp
 
         Si un . est trouvé, number devient un Float
 
@@ -76,30 +77,3 @@ class Lexer:
         self.idx += 1
         if self.idx < len(self.exp):
             self.char = self.exp[self.idx]
-
-class Token:
-    """
-    Toute les élément d'une expression héritent de Token
-    """
-    def __init__(self, type, value):
-        self.type = type
-        self.value = value
-
-    def __repr__(self):
-        """
-        Utile pour soigner l'affichage d'un objet
-        Une autre façon de representer l'objet quoi!
-        """
-        return self.value
-
-class Integer(Token):
-    def __init__(self, value):
-        super().__init__("INT", value)
-
-class Float(Token):
-    def __init__(self, value):
-        super().__init__("FLOAT", value)
-
-class Operation(Token):
-    def __init__(self, value):
-        super().__init__("OP", value)
