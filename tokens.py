@@ -11,7 +11,7 @@ class Token:
         Utile pour soigner l'affichage d'un objet
         Une autre façon de representer l'objet quoi!
         """
-        return self.value
+        return str(self.value)
 
 class Integer(Token):
     def __init__(self, value):
