@@ -45,7 +45,7 @@ class Parser:
         """
         left_node = self.factor()
         self.move()
-        while self.token.value in ("*/"):
+        while self.token.value in ("*", "/"):
             operation = self.token
             self.move()
             right_node = self.factor()
@@ -65,7 +65,7 @@ class Parser:
         Retourne l'arbre binaire final
         """
         left_node = self.term()
-        while self.token.value in ("+-"):
+        while self.token.value in ("+", "-"):
             operation = self.token
             self.move()
             right_node = self.term()
