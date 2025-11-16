@@ -33,6 +33,10 @@ class Parser:
         token = self.token
         if token.type in ("INT", "FLOAT"):
             return self.token
+        elif self.token.value == "(":
+            self.move()
+            expression = self.expression()
+            return expression
     
     def term(self):
         """
