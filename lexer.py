@@ -1,7 +1,7 @@
 """
 Analyse lexicale d'une expression
 """
-from tokens import *
+from tokens import Integer, Float, Operation, Declaration, Variable
 
 class Lexer:
     """
@@ -11,8 +11,10 @@ class Lexer:
     - stopwords (caractères ignorés)
     """
     digits = "0123456789"
-    operations = "+-/*()"
+    letters = "abcdefghijklmopqrstuvwxyz"
+    operations = "+-/*()="
     stopwords = [" "]
+    declarations = ["make"]
 
     def __init__(self, exp):
         self.exp = exp
@@ -34,6 +36,8 @@ class Lexer:
                et avancer d'un pas
             -> Sinon si c'est un stopwords, l'ignorer et continuer sans
                rien ajouter à tokens
+            -> Sinon so c'est une lettre, extraire le mot entier
+                le mot peut être le mot clé de déclaration ou le non de la variable
 
             A chaque token trouvé, l'ajouter à tokens
             """
@@ -45,6 +49,13 @@ class Lexer:
             elif self.char in Lexer.stopwords:
                 self.move()
                 continue
+            elif self.char in Lexer.letters:
+                word = self.extract_word()
+
+                if word in Lexer.declarations:
+                    self.token = Declaration(word)
+                else:
+                    self.token = Variable(word)
 
             self.tokens.append(self.token)
 
@@ -69,6 +80,19 @@ class Lexer:
 
         return Integer(number) if not isFloat else Float(number)
 
+    def extract_word(self):
+        """
+        Extrait tantque le caractère encours est une lettre
+        Et l'index ne dépasse pas la taille de l'expression
+
+        Retourne le mot extrait à la fin
+        """
+        word = ""
+        while self.char in Lexer.letters and self.idx < len(self.exp):
+            word += self.char
+            self.move()
+        return word
+    
     def move(self):
         """
         Passer au caractère suivant à condition que son idx ne dépasse
