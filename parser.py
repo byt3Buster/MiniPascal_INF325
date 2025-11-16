@@ -19,16 +19,18 @@ class Parser:
     def parse(self):
         """
         Lance le parsing complet à partir du plus haut niveau de la
-        grammaire (expression).
+        grammaire (statement).
 
         Retourne un liste imbriquée representant l'arbre binaire
         """
-        return self.expression()
+        return self.statement()
     
     def factor(self):
         """
         Si le token encours est du type INT ou FLOAT
         Retourner
+
+        Si dans l'expression on a des parenthèses, prioriser le terme
         """
         token = self.token
         if token.type in ("INT", "FLOAT"):
@@ -76,3 +78,22 @@ class Parser:
             left_node = [left_node, operation, right_node]
 
         return left_node
+    
+    def variable(self):
+        if self.token.type == "VAR":
+            return self.token
+        
+    def statement(self):
+        if self.token.type == "DECL":
+            self.move()
+            left_node = self.variable()
+            self.move()
+            if self.token.value == "=":
+                operation = self.token
+                self.move()
+                right_node = self.expression()
+
+                return [left_node, operation, right_node]
+
+        elif self.token.type in ("INT", "FLOAT", "OP"):
+            return self.expression()
