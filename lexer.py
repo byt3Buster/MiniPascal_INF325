@@ -11,7 +11,7 @@ class Lexer:
     - stopwords (caractères ignorés)
     """
     digits = "0123456789"
-    operations = "+-/*"
+    operations = "+-/*()"
     stopwords = [" "]
 
     def __init__(self, exp):
