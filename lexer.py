@@ -1,35 +1,67 @@
 """
-Analyse lexicale d'une expression
+Analyse lexicale d'un fichier source pascal
 """
-from tokens import Integer, Float, Operation, Declaration, Variable
+from tokens import Integer, Float, Operation, Keyword, Variable, Token
 
 class Lexer:
-    """
-    Attribut de classe:
-    - digits (chiffres possible dans une expression)
-    - operations (operateurs possible)
-    - stopwords (caractères ignorés)
-    """
     digits = "0123456789"
-    letters = "abcdefghijklmopqrstuvwxyz"
-    operations = "+-/*()="
-    stopwords = [" "]
-    declarations = ["make"]
+    letters = "abcdefghijklmnopqrstuvwxyz"
+    stopwords = [" ", "\n", "\t"] # caractères à ignorer
 
-    def __init__(self, exp):
-        self.exp = exp
+    # mots-clés Pascal simplifiés
+    keywords = ["program", "var", "begin", "end"]
+    types = ["integer", "float"]
+
+    # opérateurs simples
+    operations = "+-*/();:"
+
+    def __init__(self, source: str):
+        """
+        Récupération du string source
+
+        """
+        self.source = source
         self.idx = 0
         self.tokens = []
-        self.char = self.exp[self.idx]
+        self.char = self.source[self.idx] if self.source else None
         self.token = None
 
+    # -----------------------------
+    # Avancer dans le texte
+    # -----------------------------
+    def move(self, n=1):
+        """
+        Passer au caractère suivant à condition que son idx ne dépasse
+        pas la taille de l'expression
+        """
+        self.idx += n
+        if self.idx < len(self.source):
+            self.char = self.source[self.idx]
+        else:
+            self.char = None
+
+    # -----------------------------
+    # Vérifier correspondance
+    # -----------------------------
+    def match(self, text):
+        """
+        Vérifie si la prochaine chaîne dans source
+        correspond à text
+        """
+        return self.source[self.idx:self.idx + len(text)] == text
+
+    # -----------------------------
+    # Tokenisation principale
+    # -----------------------------
     def tokenize(self):
         """
         tokenization de self.exp
         Retourne tout les tokens reconnaissable trouvés dans exp
         """
-        while self.idx < len(self.exp):
+        while self.char is not None:
             """
+            -> Si les 2 prochain char correspondent à l'opérateur d'affectation
+               :=, créer le token et avancer de 2 pas
             -> Si le caractère encours est un digit, extraite tout 
                les chiffre qui suivent
             -> Sinon si c'est un opérateur, l'extraire
@@ -41,26 +73,51 @@ class Lexer:
 
             A chaque token trouvé, l'ajouter à tokens
             """
-            if self.char in Lexer.digits:
-                self.token = self.extract_number()
-            elif self.char in Lexer.operations:
-                self.token = Operation(self.char)
-                self.move()
-            elif self.char in Lexer.stopwords:
+            # ignorer les espaces
+            if self.char in Lexer.stopwords:
                 self.move()
                 continue
-            elif self.char in Lexer.letters:
+
+            # opérateur multi-caractères := doit venir avant le reste
+            if self.match(":="):
+                self.tokens.append(Operation(":="))
+                self.move(2)
+                continue
+
+            # extraction des nombres
+            if self.char in Lexer.digits:
+                self.tokens.append(self.extract_number())
+                continue
+
+            # extraction des mots
+            if self.char in Lexer.letters:
                 word = self.extract_word()
 
-                if word in Lexer.declarations:
-                    self.token = Declaration(word)
-                else:
-                    self.token = Variable(word)
+                if word in Lexer.keywords:
+                    self.tokens.append(Keyword(word))
 
-            self.tokens.append(self.token)
+                elif word in Lexer.types:
+                    self.tokens.append(Token("TYPE", word))
+
+                else:
+                    self.tokens.append(Variable(word))
+
+                continue
+
+            # opérateurs simples
+            if self.char in Lexer.operations:
+                self.tokens.append(Operation(self.char))
+                self.move()
+                continue
+
+            # caractère inconnu
+            raise Exception(f"Caractère non reconnu: {self.char}")
 
         return self.tokens
-    
+
+    # -----------------------------
+    # Extraction d'un nombre
+    # -----------------------------
     def extract_number(self):
         """
         Extrait tantque le prochain caractère est un chiffre
@@ -71,15 +128,19 @@ class Lexer:
         Ajouter le digit ou le . et passer au caractère suivant
         """
         number = ""
-        isFloat = False
-        while (self.char in Lexer.digits or self.char == ".") and (self.idx < len(self.exp)):
+        is_float = False
+
+        while self.char is not None and (self.char in Lexer.digits or self.char == "."):
             if self.char == ".":
-                isFloat = True
+                is_float = True
             number += self.char
             self.move()
 
-        return Integer(number) if not isFloat else Float(number)
+        return Float(number) if is_float else Integer(number)
 
+    # -----------------------------
+    # Extraction d'un mot
+    # -----------------------------
     def extract_word(self):
         """
         Extrait tantque le caractère encours est une lettre
@@ -88,16 +149,7 @@ class Lexer:
         Retourne le mot extrait à la fin
         """
         word = ""
-        while self.char in Lexer.letters and self.idx < len(self.exp):
+        while self.char is not None and self.char in Lexer.letters:
             word += self.char
             self.move()
         return word
-    
-    def move(self):
-        """
-        Passer au caractère suivant à condition que son idx ne dépasse
-        pas la taille de l'expression
-        """
-        self.idx += 1
-        if self.idx < len(self.exp):
-            self.char = self.exp[self.idx]
