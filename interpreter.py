@@ -1,72 +1,92 @@
-from tokens import Integer, Float
+from tokens import Integer, Float, Variable, Token, Operation, Keyword
 
 class Interpreter:
-    """
-    Reçois l'abre binaire et procède à une analyse ascendante
-    """
-    def __init__(self, tree):
-        self.tree = tree
+    def __init__(self, ast):
+        self.ast = ast
+        self.data = {}  # dictionnaire pour stocker les variables
 
-    # Retour les valeurs des tokens Integer en int et Float en float
-    
-    def read_INT(self, value):
-        return int(value)
-    
-    def read_FLOAT(self, value):
-        return float(value)
+    # -----------------------------
+    # Lecture des valeurs
+    # -----------------------------
+    def read_token(self, token):
+        """ 
+        Convertit les integer et float
+        Si la variable n'est pas déclaré, lever une exception
+        Si val est un autre token, retourner le token
+        """
+        if isinstance(token, Integer):
+            return int(token.value)
+        elif isinstance(token, Float):
+            return float(token.value)
+        elif isinstance(token, Variable):
+            if token.value not in self.data:
+                raise Exception(f"Variable non définie : {token.value}")
+            val = self.data[token.value]
+            # si val est un Token
+            if isinstance(val, Token):
+                return self.read_token(val)
+            return val
+        else:
+            return token
 
+    # -----------------------------
+    # Calcul binaire
+    # -----------------------------
     def compute_bin(self, left, op, right):
-        """
-        Récupère le type du terme de gauche et de droit
+        left_val = self.read_token(left) if not isinstance(left, list) else self.interpret_expr(left)
+        right_val = self.read_token(right) if not isinstance(right, list) else self.interpret_expr(right)
 
-        Applique le read selon le type du terme avec comme argument la valeur du token
+        if op.value == ":=":
+            # Affectation
+            if not isinstance(left, Variable):
+                raise Exception("La partie gauche de := doit être une variable")
+            self.data[left.value] = right_val
+            return right_val
+        elif op.value == "+":
+            return left_val + right_val
+        elif op.value == "-":
+            return left_val - right_val
+        elif op.value == "*":
+            return left_val * right_val
+        elif op.value == "/":
+            return left_val / right_val
+        else:
+            raise Exception(f"Opérateur inconnu : {op.value}")
 
-        Applique l'opération et retourne le resultat
-        """
-        left_type = left.type
-        right_type = right.type
+    # -----------------------------
+    # Interprétation d'une expression / affectation
+    # -----------------------------
+    def interpret_expr(self, expr):
 
-        left = getattr(self, f"read_{left_type}")(left.value)
-        right = getattr(self, f"read_{right_type}")(right.value)
+        if isinstance(expr, list) and len(expr) == 3:
+            return self.compute_bin(expr[0], expr[1], expr[2])
+        elif isinstance(expr, Token):
+            return self.read_token(expr)
+        else:
+            raise Exception(f"Expression invalide : {expr}")
 
-        if op.value == '+':
-            output = left + right
-        elif op.value == '-':
-            output = left - right
-        elif op.value == '*':
-            output = left * right
-        elif op.value == '/':
-            output = left / right
+    # -----------------------------
+    # Interprétation complète de l'AST
+    # -----------------------------
+    def interpret(self):
+        for node in self.ast:
+            # On ignore program, begin, end
+            if isinstance(node, Keyword) and node.value in ("program", "begin", "end"):
+                continue
+            # Déclaration de variable : [DECL(var), VAR, TYPE]
+            if isinstance(node, list) and isinstance(node[0], Keyword) and node[0].value == "var":
+                var_token = node[1]
+                # Initialise à None
+                self.data[var_token.value] = None
+                continue
 
-        return Integer(output) if (left_type == "INT" and right_type == "INT") else Float(output) 
+            if isinstance(node, list) and node[0].type == "KEYWORD" and node[0].value == "writeln":
+                expr = node[1]
+                value = self.interpret_expr(expr)
+                print(value)
 
-    def interpret(self, tree=None):
-        """
-        Analyse ascendante de l'arbre binaire
-        Prend pas défaut None pour l'attribut tree
-            A cause de la récursion, il faut passer un nouvelle arbre à interpret
-            Car dans le shell, interpret est appellé avec un seul paramètre "self"
-        """
-        if tree is None:
-            tree = self.tree
+            # Affectation ou expression
+            if isinstance(node, list):
+                self.interpret_expr(node)
 
-        """
-        Récursion sur les sous-arbres
-        """
-        # Evalue le sous-arbre gauche
-        left_node = tree[0] 
-        if isinstance(left_node, list):
-            left_node = self.interpret(left_node)
-
-        # Evalue le sous-arbre droit
-        right_node = tree[2]
-        if isinstance(right_node, list):
-            right_node = self.interpret(right_node)
-
-        # Racine
-        operator = tree[1]
-
-        """
-        Retour du résultat de l'pération
-        """
-        return self.compute_bin(left_node, operator, right_node)
+        return self.data
