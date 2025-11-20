@@ -1,99 +1,144 @@
 class Parser:
     def __init__(self, tokens):
         """
-        reçois en paramètre les tokens issues de lexer
-        commence à analyser le premier token
+        Reçoit en paramètre les tokens issus du lexer
+        Commence à analyser le premier token
         """
         self.tokens = tokens
         self.idx = 0
-        self.token = self.tokens[self.idx]
+        self.token = self.tokens[self.idx] if self.tokens else None
 
     def move(self):
-        """
-        déplace d'un pas dans la liste des tokens
-        """
+        """Déplace d'un pas dans la liste des tokens"""
         self.idx += 1
         if self.idx < len(self.tokens):
             self.token = self.tokens[self.idx]
+        else:
+            self.token = None
 
-    def parse(self):
-        """
-        Lance le parsing complet à partir du plus haut niveau de la
-        grammaire (statement).
-
-        Retourne un liste imbriquée representant l'arbre binaire
-        """
-        return self.statement()
-    
+    # -----------------------------
+    # Expressions et termes
+    # -----------------------------
     def factor(self):
         """
-        Si le token encours est du type INT ou FLOAT
-        Retourner
-
-        Si dans l'expression on a des parenthèses, prioriser le terme
+        Un facteur est une élément entier ou flottant
+        Gestion des priorités dans les parenthèses
         """
         token = self.token
+        if token is None:
+            return None
+
         if token.type in ("INT", "FLOAT"):
-            return self.token
-        elif self.token.value == "(":
+            node = token
             self.move()
-            expression = self.expression()
-            return expression
-    
+            return node
+
+        elif token.value == "(":
+            """
+            Si on rencontre une parenthèse, extraire l'expression et
+            continuer
+            """
+            self.move()
+            expr = self.expression()
+            if self.token.value == ")":
+                self.move()
+            return expr
+
+        elif token.type.startswith("VAR"):
+            node = token
+            self.move()
+            return node
+
     def term(self):
         """
-        Lit le premier facteur à gauche
-        Avance d'un pas
-        Tantque le prochain token est soit * ou /, on memorise dans operation
-            Avance d'un pas
-            Lit le facteur droite
-            Crée un noeud binaire avec operation comme racine
+        Un termes est multiplication de 2 ou plusieurs facteurs
         """
         left_node = self.factor()
-        self.move()
-        while self.token.value in ("*", "/"):
-            operation = self.token
+        while self.token is not None and self.token.value in ("*", "/"):
+            op = self.token
             self.move()
             right_node = self.factor()
-            self.move()
-            left_node = [left_node, operation, right_node]
-        
+            left_node = [left_node, op, right_node]
         return left_node
 
     def expression(self):
         """
-        Lit le premier term à gauche
-        Pas besoin d'avancer d'un pas puisque on avance d'un pas dans term
-        Tantque le prochain token est soit - ou +, on memorise dans operation
-            Avance d'un pas
-            Lit le term droite
-            Crée un noeud binaire avec operation comme racine
-        Retourne l'arbre binaire final
+        Une expression est l'addition de deux ou plusieurs terme
         """
         left_node = self.term()
-        while self.token.value in ("+", "-"):
-            operation = self.token
+        while self.token is not None and self.token.value in ("+", "-"):
+            op = self.token
             self.move()
             right_node = self.term()
-            left_node = [left_node, operation, right_node]
-
+            left_node = [left_node, op, right_node]
         return left_node
-    
+
+    # -----------------------------
+    # Variable
+    # -----------------------------
     def variable(self):
-        if self.token.type == "VAR":
-            return self.token
-        
+        if self.token is not None and self.token.type.startswith("VAR"):
+            node = self.token
+            self.move()
+            return node
+
+    # -----------------------------
+    # Statement
+    # -----------------------------
     def statement(self):
-        if self.token.type == "DECL":
+        """
+        Reconnaît les statements :
+        - déclaration de variable avec := (affectation)
+        - expression seule
+        """
+        if self.token is None:
+            return None
+
+        # Déclaration ou affectation
+        if self.token.type == "KEYWORD":
+            keyword_token = self.token
             self.move()
+
+            # Exemple : var x : integer
+            if keyword_token.value == "var":
+                var_token = self.variable()
+                # on peut vérifier le type suivant ': TYPE'
+                if self.token and self.token.value == ":":
+                    self.move()
+                    type_token = self.token
+                    self.move()
+                    return [keyword_token, var_token, type_token]
+
+            # Exemple : affectation x := expression
+            elif keyword_token.value in ("program", "begin", "end"):
+                # Pour l'instant on les retourne seuls
+                return keyword_token
+
+        # Affectation classique : VAR := expression
+        if self.token.type.startswith("VAR"):
             left_node = self.variable()
-            self.move()
-            if self.token.value == "=":
-                operation = self.token
+            if self.token and self.token.value == ":=":
+                op = self.token
                 self.move()
                 right_node = self.expression()
+                return [left_node, op, right_node]
 
-                return [left_node, operation, right_node]
+        # Sinon expression simple
+        return self.expression()
 
-        elif self.token.type in ("INT", "FLOAT", "OP"):
-            return self.expression()
+    # -----------------------------
+    # Parser complet
+    # -----------------------------
+    def parse(self):
+        """
+        Parse tous les tokens et renvoie une liste de statements
+        """
+        statements = []
+        while self.token is not None:
+            stmt = self.statement()
+            if stmt is not None:
+                statements.append(stmt)
+            # Ignore les ';' séparateurs
+            if self.token and self.token.value == ";":
+                self.move()
+        return statements
