@@ -8,10 +8,11 @@ class Token:
 
     def __repr__(self):
         """
-        Utile pour soigner l'affichage d'un objet
-        Une autre façon de representer l'objet quoi!
+        Utile pour soigner l'affichage d'un objet.
+        Une autre façon de représenter l'objet !
         """
-        return str(self.value)
+        return f"{self.type}({self.value})"
+
 
 class Integer(Token):
     def __init__(self, value):
@@ -25,10 +26,10 @@ class Operation(Token):
     def __init__(self, value):
         super().__init__("OP", value)
 
-class Declaration(Token):
+class Keyword(Token):
     def __init__(self, value):
-        super().__init__("DECL", value)
+        super().__init__("KEYWORD", value)
 
 class Variable(Token):
     def __init__(self, value):
-        super().__init__("VAR", value)
+        super().__init__("VAR(?)", value)
