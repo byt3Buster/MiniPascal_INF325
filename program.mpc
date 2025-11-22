@@ -1,0 +1,8 @@
+program test;
+    var x : integer;
+    var y : integer;
+begin
+    x := 5;
+    y := x;
+    writeln(8+8)
+end
